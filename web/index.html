@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Relay Control - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>⚡ Relay Control Dashboard</h1>
+                <div class="header-info">
+                    <span class="status-indicator" id="esp32-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Offline</span>
+                    </span>
+                    <span class="time" id="current-time"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Relay Grid -->
+            <section class="relay-section">
+                <h2>Kontrol Relay</h2>
+                <div class="relay-grid">
+                    <!-- Relay 1 -->
+                    <div class="relay-card" data-relay="1">
+                        <div class="relay-header">
+                            <h3>Relay 1</h3>
+                            <span class="relay-badge">GPIO 16</span>
+                        </div>
+                        <div class="relay-name" contenteditable="true" data-default="Lampu Ruang Tamu">Lampu Ruang Tamu</div>
+                        <div class="relay-toggle">
+                            <input type="checkbox" id="relay1" class="relay-checkbox">
+                            <label for="relay1" class="relay-switch"></label>
+                        </div>
+                        <div class="relay-status">
+                            <span class="status-label">Status:</span>
+                            <span class="status-value" id="status1">Mati</span>
+                        </div>
+                        <div class="relay-time">
+                            <small id="time1">--:--:--</small>
+                        </div>
+                    </div>
+
+                    <!-- Relay 2 -->
+                    <div class="relay-card" data-relay="2">
+                        <div class="relay-header">
+                            <h3>Relay 2</h3>
+                            <span class="relay-badge">GPIO 17</span>
+                        </div>
+                        <div class="relay-name" contenteditable="true" data-default="Lampu Kamar">Lampu Kamar</div>
+                        <div class="relay-toggle">
+                            <input type="checkbox" id="relay2" class="relay-checkbox">
+                            <label for="relay2" class="relay-switch"></label>
+                        </div>
+                        <div class="relay-status">
+                            <span class="status-label">Status:</span>
+                            <span class="status-value" id="status2">Mati</span>
+                        </div>
+                        <div class="relay-time">
+                            <small id="time2">--:--:--</small>
+                        </div>
+                    </div>
+
+                    <!-- Relay 3 -->
+                    <div class="relay-card" data-relay="3">
+                        <div class="relay-header">
+                            <h3>Relay 3</h3>
+                            <span class="relay-badge">GPIO 18</span>
+                        </div>
+                        <div class="relay-name" contenteditable="true" data-default="AC">AC</div>
+                        <div class="relay-toggle">
+                            <input type="checkbox" id="relay3" class="relay-checkbox">
+                            <label for="relay3" class="relay-switch"></label>
+                        </div>
+                        <div class="relay-status">
+                            <span class="status-label">Status:</span>
+                            <span class="status-value" id="status3">Mati</span>
+                        </div>
+                        <div class="relay-time">
+                            <small id="time3">--:--:--</small>
+                        </div>
+                    </div>
+
+                    <!-- Relay 4 -->
+                    <div class="relay-card" data-relay="4">
+                        <div class="relay-header">
+                            <h3>Relay 4</h3>
+                            <span class="relay-badge">GPIO 19</span>
+                        </div>
+                        <div class="relay-name" contenteditable="true" data-default="Kulkas">Kulkas</div>
+                        <div class="relay-toggle">
+                            <input type="checkbox" id="relay4" class="relay-checkbox">
+                            <label for="relay4" class="relay-switch"></label>
+                        </div>
+                        <div class="relay-status">
+                            <span class="status-label">Status:</span>
+                            <span class="status-value" id="status4">Mati</span>
+                        </div>
+                        <div class="relay-time">
+                            <small id="time4">--:--:--</small>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="actions-section">
+                <h2>Aksi Cepat</h2>
+                <div class="actions-grid">
+                    <button class="action-btn" id="all-on">🔆 Nyalakan Semua</button>
+                    <button class="action-btn" id="all-off">🌙 Matikan Semua</button>
+                    <button class="action-btn" id="refresh-btn">🔄 Refresh</button>
+                    <button class="action-btn" id="settings-btn">⚙️ Settings</button>
+                </div>
+            </section>
+
+            <!-- History Section -->
+            <section class="history-section">
+                <h2>Riwayat Perubahan</h2>
+                <div class="history-controls">
+                    <input type="date" id="history-date">
+                    <button class="action-btn" id="clear-history">Hapus History</button>
+                </div>
+                <div class="history-list" id="history-list">
+                    <p class="empty-message">Belum ada riwayat</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2024 ESP32 Relay Control | Made with ❤️ by Muhammad Iqbal</p>
+        </footer>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Pengaturan</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <label>IP Address ESP32:</label>
+                    <input type="text" id="esp32-ip" placeholder="192.168.1.100" class="input-field">
+                </div>
+                <div class="setting-group">
+                    <label>Port:</label>
+                    <input type="number" id="esp32-port" placeholder="8080" class="input-field">
+                </div>
+                <div class="setting-group">
+                    <label>Refresh Interval (ms):</label>
+                    <input type="number" id="refresh-interval" value="2000" class="input-field">
+                </div>
+                <div class="setting-group">
+                    <label>
+                        <input type="checkbox" id="auto-refresh">
+                        Auto Refresh
+                    </label>
+                </div>
+                <div class="setting-group">
+                    <label>Theme:</label>
+                    <select id="theme-select" class="input-field">
+                        <option value="light">Light Mode</option>
+                        <option value="dark">Dark Mode</option>
+                        <option value="auto">Auto</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="close-settings">Batal</button>
+                <button class="btn btn-primary" id="save-settings">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast-notification">
+        <span id="toast-message"></span>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
