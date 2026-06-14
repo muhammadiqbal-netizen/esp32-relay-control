@@ -1,7 +1,6 @@
 /*
- * SMARTHOME_IBLBOT FINAL v1.4 - Saklar Push Button + Google Assistant + Alexa
+ * SMARTHOME_IBLBOT FINAL v1.4 - Saklar Push Button + Telegram Bot
  * Fitur: Web + Telegram Inline + Multi Admin EEPROM + Status EEPROM + Saklar Toggle
- *        + Google Assistant + Amazon Alexa Voice Control
  * Saklar: Push button ke GND, pencet = toggle ON/OFF
  */
 
@@ -17,12 +16,6 @@ const char* ssid = "NAMA_WIFI_KAMU";
 const char* password = "PASSWORD_WIFI_KAMU";
 const char* BOT_TOKEN = "TOKEN_BARU_DARI_BOTFATHER";
 
-// ===== GOOGLE & ALEXA CONFIG =====
-const char* ALEXA_API_KEY = "ALEXA_API_KEY_KAMU"; // Dari Alexa app
-const char* GOOGLE_HOME_TOKEN = "GOOGLE_HOME_TOKEN_KAMU";
-bool useGoogleHome = true;  // Enable/disable Google Home
-bool useAlexa = true;       // Enable/disable Alexa
-
 Preferences prefs;
 String adminList[5];
 int adminCount = 0;
@@ -31,7 +24,6 @@ int adminCount = 0;
 const int relayPin[4] = {26, 27, 14, 12};
 const int saklarPin[4] = {32, 33, 25, 34};
 const char* namaLampu[4] = {"Lampu Sudut", "Lampu Srip", "Lampu Tengah", "Lampu Makan"};
-const char* alexaName[4] = {"corner light", "strip light", "middle light", "dining light"}; // Nama untuk Alexa
 bool statusRelay[4] = {false, false, false, false};
 
 // ===== VARIABEL SAKLAR =====
@@ -75,18 +67,10 @@ void setup() {
   server.on("/toggle", handleToggle);
   server.on("/status", handleStatus);
   
-  // ===== GOOGLE HOME ROUTES =====
-  server.on("/google/status", HTTP_POST, handleGoogleStatus);
-  server.on("/google/execute", HTTP_POST, handleGoogleExecute);
-  
-  // ===== ALEXA ROUTES =====
-  server.on("/alexa/discovery", HTTP_POST, handleAlexaDiscovery);
-  server.on("/alexa/control", HTTP_POST, handleAlexaControl);
-  
   server.begin();
 
   if(WiFi.status() == WL_CONNECTED) {
-    broadcastAdmin("🤖 smarthome_iblbot Online v1.4\nIP: " + WiFi.localIP().toString() + "\n✅ Google Home & Alexa Ready!");
+    broadcastAdmin("🤖 smarthome_iblbot Online v1.4\nIP: " + WiFi.localIP().toString() + "\n✅ Telegram Ready!");
   }
 }
 
@@ -152,147 +136,6 @@ void broadcastAdmin(String msg) {
   }
 }
 
-// ===== GOOGLE HOME HANDLER =====
-void handleGoogleStatus() {
-  if(!useGoogleHome) {
-    server.send(403, "application/json", "{\"error\":\"Google Home disabled\"}");
-    return;
-  }
-
-  DynamicJsonDocument doc(2048);
-  JsonArray devices = doc.createNestedArray("devices");
-
-  for(int i=0; i<4; i++) {
-    JsonObject device = devices.createNestedObject();
-    device["id"] = String(i);
-    device["name"] = namaLampu[i];
-    device["type"] = "light";
-    device["state"] = statusRelay[i]? "on" : "off";
-    device["brightness"] = statusRelay[i]? 100 : 0;
-  }
-
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-  
-  Serial.println("Google Home Status Request");
-}
-
-void handleGoogleExecute() {
-  if(!useGoogleHome) {
-    server.send(403, "application/json", "{\"error\":\"Google Home disabled\"}");
-    return;
-  }
-
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-
-  if(error) {
-    server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
-    return;
-  }
-
-  String deviceId = doc["deviceId"];
-  String command = doc["command"];
-  bool state = doc["state"];
-
-  int idx = deviceId.toInt();
-  if(idx >= 0 && idx < 4) {
-    setRelay(idx, state, "Google Home");
-    
-    DynamicJsonDocument response(256);
-    response["success"] = true;
-    response["deviceId"] = deviceId;
-    response["state"] = statusRelay[idx]? "on" : "off";
-    
-    String resp;
-    serializeJson(response, resp);
-    server.send(200, "application/json", resp);
-    
-    Serial.println("Google Home Command: " + namaLampu[idx] + " -> " + (state?"ON":"OFF"));
-  } else {
-    server.send(404, "application/json", "{\"error\":\"Device not found\"}");
-  }
-}
-
-// ===== ALEXA HANDLER =====
-void handleAlexaDiscovery() {
-  if(!useAlexa) {
-    server.send(403, "application/json", "{\"error\":\"Alexa disabled\"}");
-    return;
-  }
-
-  DynamicJsonDocument doc(2048);
-  JsonArray devices = doc.createNestedArray("devices");
-
-  for(int i=0; i<4; i++) {
-    JsonObject device = devices.createNestedObject();
-    device["id"] = "device-" + String(i);
-    device["name"] = alexaName[i];
-    device["description"] = namaLampu[i];
-    device["type"] = "light";
-    device["actions"].add("turn_on");
-    device["actions"].add("turn_off");
-    device["actions"].add("set_brightness");
-    device["state"]["on"] = statusRelay[i];
-    device["state"]["brightness"] = statusRelay[i]? 100 : 0;
-  }
-
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-  
-  Serial.println("Alexa Discovery Request");
-}
-
-void handleAlexaControl() {
-  if(!useAlexa) {
-    server.send(403, "application/json", "{\"error\":\"Alexa disabled\"}");
-    return;
-  }
-
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, server.arg("plain"));
-
-  if(error) {
-    server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
-    return;
-  }
-
-  String deviceId = doc["device_id"];
-  String action = doc["action"];
-  bool state = doc["state"];
-  int brightness = doc["brightness"] | 100;
-
-  // Extract device number from "device-0", "device-1", etc.
-  int idx = deviceId.substring(7).toInt();
-
-  if(idx >= 0 && idx < 4) {
-    if(action == "turn_on") {
-      setRelay(idx, true, "Alexa");
-    } else if(action == "turn_off") {
-      setRelay(idx, false, "Alexa");
-    } else if(action == "set_brightness") {
-      setRelay(idx, brightness > 50, "Alexa");
-    }
-
-    DynamicJsonDocument response(256);
-    response["success"] = true;
-    response["device_id"] = deviceId;
-    response["action"] = action;
-    response["state"]["on"] = statusRelay[idx];
-    response["state"]["brightness"] = statusRelay[idx]? brightness : 0;
-
-    String resp;
-    serializeJson(response, resp);
-    server.send(200, "application/json", resp);
-    
-    Serial.println("Alexa Command: " + namaLampu[idx] + " -> " + action);
-  } else {
-    server.send(404, "application/json", "{\"error\":\"Device not found\"}");
-  }
-}
-
 // ===== WEB SERVER =====
 void handleRoot() {
   String html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'>";
@@ -301,12 +144,10 @@ void handleRoot() {
   html += "h2{color:#38bdf8}.btn{width:90%;max-width:300px;padding:18px;margin:12px;border:none;border-radius:12px;font-size:18px;font-weight:bold}";
   html += ".on{background:#22c55e}.off{background:#ef4444}.wifi{color:#fbbf24}";
   html += ".badge{display:inline-block;padding:8px 12px;border-radius:8px;margin:5px;font-size:12px;font-weight:bold}";
-  html += ".google{background:#4285f4;color:white}.alexa{background:#FF9900;color:white}.telegram{background:#0088cc;color:white}";
+  html += ".telegram{background:#0088cc;color:white}";
   html += "</style></head><body>";
   html += "<h2>🤖 smarthome_iblbot v1.4</h2>";
   html += "<div style='margin:20px'>";
-  if(useGoogleHome) html += "<span class='badge google'>✓ Google Home</span>";
-  if(useAlexa) html += "<span class='badge alexa'>✓ Alexa</span>";
   html += "<span class='badge telegram'>✓ Telegram</span>";
   html += "</div>";
   
@@ -411,8 +252,6 @@ void handleTelegram(int numMessages) {
       String msg = "ℹ️ Informasi smarthome_iblbot v1.4:\n\n";
       msg += "📱 IP Address: " + WiFi.localIP().toString() + "\n";
       msg += "📡 WiFi: " + String(WiFi.RSSI()) + " dBm\n";
-      msg += "🟢 Google Home: " + String(useGoogleHome?"✓ Aktif":"✗ Nonaktif") + "\n";
-      msg += "🟠 Alexa: " + String(useAlexa?"✓ Aktif":"✗ Nonaktif") + "\n";
       msg += "👥 Admin: " + String(adminCount) + "/5\n";
       bot.sendMessage(chat_id, msg, "");
     }
